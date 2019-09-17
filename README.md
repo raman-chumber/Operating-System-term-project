@@ -1,5 +1,5 @@
 # Operating System term project
- ### In this course you are required to design and implement a management solution that can remotely monitor and control a Linux system. You need to follow the steps below and develop the components accordingly.
+ ### In this course you are required to design and implement a management solution that can locally monitor and control a Linux system. You need to follow the steps below and develop the components accordingly.
 ## "Proc" pseudo file system
 ### • Understanding what "Proc" is and what we can do with the interface.
 ### • Develop a Python script to capture CPU and system statistics on an interval basis:
