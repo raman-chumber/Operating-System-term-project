@@ -17,18 +17,22 @@ class ReadFile:
         def __init__(self, path):
                 self.path = path
 
-        def cpu_data(self):
+        def stat_file_data(self):
                 global u_time_curr, u_time_prev, s_time_curr, s_time_prev, idle_time_prev, idle_time_curr
                 i=0
                 c=0
+                d=0
                 self.cpu={}
                 self.cpu_utl = 0
                 self.delta_u_time = 0
                 self.delta_s_time = 0
                 self.delta_idle_time = 0
-                index=0
-                while(index<10):
-                        with open(self.path, 'r') as stat_file:
+        #       index=0
+                self.total={}
+                self.no_inter = 0
+                self.delta_inter = 0
+                while True:
+                         with open(self.path, 'r') as stat_file:
                                 count =0
                                 for line in stat_file:
                                         if line.startswith ("cpu"):
@@ -60,7 +64,7 @@ class ReadFile:
                                                         self.delta_u_time = (float(u_time_curr[i]) - float(u_time_prev[i]))
                                                         self.delta_s_time = (float(s_time_curr[i]) - float(s_time_prev[i]))
                                                         self.delta_idle_time = (float(idle_time_curr[i]) - float(idle_time_prev[i]))
-                                                        self.cpu_utl = ((self.delta_u_time + self.delta_s_time)/(self.delta_u_time + self.delta_s_time + self.delta_idle_time))*100
+                                                        self.cpu_utl = ((self.delta_u_time + self.delta_s_time)/(self.delta_u_time + self.delta_s_time + self.delta_idle_time))*100                          
                                                         #self.u_cpu_utl = (((float(u_time_curr[i])/100)-(float(u_time_prev[i])/100))/3)*100
                                                         #self.s_cpu_utl = (((float(s_time_curr[i])/100)-(float(s_time_prev[i])/100))/3)*100
                                                         u_time_prev[i] = u_time_curr[i]
@@ -69,39 +73,25 @@ class ReadFile:
                                                         #print("User time is = " +(self.u_time)+ ".")
                                                         #print(self.u_cpu_utl)
                                                         self.cpu[c]=[self.cpu_name, self.u_time, self.s_time, self.idle_time, str(self.delta_u_time), str(self.delta_s_time), str(self.delta_idle_time), str(round(self.cpu_utl))]
-                                                        i+=1
                                                         c+=1
                                                         print(self.cpu)
-                        time.sleep(interval)
-                        index+=1
 
-                         def inter_data(self):
-                        global inter_curr, inter_prev
-                        index = 0
-                        i=0
-                        c=0
-                        self.total={}
-                        self.no_inter = 0
-                        self.delta_inter = 0
-                        while (index<10):
-                                with open(self.path, 'r') as stat_file:
-                                        for line in stat_file:
                                                 if line.startswith("intr"):
-                                                        split_inter = line.split()
-                                                        self.inter = split_inter[1]
-                                                        inter_curr[i] = self.inter
-                                                        if inter_prev[i] == 0:
-                                                             inter_prev[i] = self.inter
-                                                        else:
-                                                                self.delta_inter = (float(inter_curr[i]) - float(inter_prev[i]))
-                                                                self.no_inter = (self.delta_inter)/2
-                                                                inter_prev[i] = inter_curr[i]
-                                                                self.total[c]=[str(self.no_inter)]
-                                                                i+=1
-                                                                c+=1
-                                                                print(self.total)
+                                                split_inter = line.split()
+                                                self.inter = split_inter[1]
+                                                inter_curr[i] = self.inter
+                                                if inter_prev[i] == 0:
+                                                        inter_prev[i] = self.inter
+                                                else:
+                                                        self.delta_inter = (float(inter_curr[i]) - float(inter_prev[i]))
+                                                        self.no_inter = (self.delta_inter)/2
+                                                        inter_prev[i] = inter_curr[i]
+                                                        self.total[d]=[str(self.no_inter)]
+                                                        d+=1
+                                                        print(self.total)
+                                                        i+=1
                         time.sleep(interval)
-                        index += 1
+                #       index += 1
                         #print("Total number of CPUs = " +str(count)+ ".")
                         #print("Number of Logical CPUs = " +str(logical_cpu)+ ".")
                         #print("CPU time = " +str(cpu)+ ".")
@@ -110,6 +100,4 @@ class ReadFile:
 #print("Number of Logical CPUs = " +str(logical_cpu)+ ".")
 if __name__ == "__main__":
     reader = ReadFile("/proc/stat")
-    reader.cpu_data()
-    reader.inter_data()
-
+    reader.stat_file_data()
