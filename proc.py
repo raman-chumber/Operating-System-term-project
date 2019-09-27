@@ -104,6 +104,7 @@ if __name__ == "__main__":
 =======
 #Python Script to capture CPU and system statistics on an #interval basis: 
 #cpu utilization in percentage:user mode, system mode and overall utilization
+#____________________________________________________________________________
 
 count=0
 f=open("/proc/stat","r")
