@@ -1,37 +1,70 @@
 #cpu utilization in percentage:user mode, system mode and overall utilization\
 import time
+import sys
+u_time_curr = [0]*5
+u_time_prev = [0]*5
+s_time_curr = [0]*5
+s_time_prev = [0]*5
+idle_time_curr = [0]*5
+idle_time_prev = [0]*5
 
-index=0
-while (index < 10):
+interval = 2
 
-        count=0
-        f=open("/proc/stat","r")
-        cpu_search=f.readlines()
-        for line in cpu_search:
-                if "cpu" in line:
-                        count=count+1
-                        logical_cpu=count-1
-        print("Total number of CPUs = " +str(count)+ ".")
-        print("Number of Logical CPUs = " +str(logical_cpu)+ ".")
-        f.close()
-#for u time
+class CPU_File:
+        def __init__(self, path):
+                self.path = path
+                self.interval_one = 1
 
-        f=open("/proc/stat","r")
-        ut_search=f.readlines()
-        col=1
-        u_time=[]
-        s_time=[]
-        for line1 in ut_search:
-                if line1.startswith("cpu"):
-                        u_time.append(line1.split(' ')[col+1])
-                        s_time.append(line1.split(' ')[col+3])
-#print(u_time)
-#print(s_time)
-        x=u_time[0]
-        y=s_time[0]
-#cpu=[]
-        cpu=int(x)+int(y)
-        print("CPU time= " +str(cpu)+ ".")
-        f.close()
-        time.sleep(2)
-        index += 1
+        def cpu_func(self):
+                global u_time_curr, u_time_prev, s_time_curr, s_time_prev, idle_time_prev, idle_time_curr
+                i=0
+                c=0
+                index=0
+                self.cpu={}
+                self.cpu_utl = 0
+                #self.s_cpu_utl = 0
+                self.delta_u_time = 0
+                self.delta_s_time = 0
+                self.delta_idle_time = 0
+                while(index<10):
+                    with open(self.path, 'r') as stat_file:
+                                count =0
+                                for line in stat_file:
+                                        if line.startswith ("cpu"):    # if line starts with "cpu" get all the values #
+                                                count =count+1
+                                                logical_cpu=count-1
+                                                split_total=line.split()
+                                                self.cpu_name = split_total[0]
+                                                self.u_time=split_total[1]
+                                                self.s_time=split_total[3]
+                                                self.idle_time=split_total[4]
+                                                u_time_curr[i] = self.u_time
+                                                s_time_curr[i] = self.s_time
+                                                idle_time_curr[i] = self.idle_time
+                                                # if the previous values are zero that means it is the first reading #
+                                                if u_time_prev[i]== 0 and s_time_prev[i]==0 and idle_time_prev[i] == 0: 
+                                                        u_time_prev[i] = self.u_time
+                                                        s_time_prev[i] = self.s_time
+                                                        idle_time_prev[i] = self.idle_time
+                                                else:
+                                                	# if it is not the first reading then calculate the delta values and CPU utilization(counter) #
+                                                        self.delta_u_time = (float(u_time_curr[i]) - float(u_time_prev[i]))
+                                                        self.delta_s_time = (float(s_time_curr[i]) - float(s_time_prev[i]))
+                                                        self.delta_idle_time = (float(idle_time_curr[i]) - float(idle_time_prev[i]))
+                                                        self.cpu_utl = ((self.delta_u_time + self.delta_s_time)/(self.delta_u_time + self.delta_s_time + self.delta_idle_time))*100
+                                                        u_time_prev[i] = u_time_curr[i]
+                                                        s_time_prev[i] = s_time_curr[i]
+                                                        idle_time_prev[i] = idle_time_curr[i]
+                                                        self.cpu[c]=[self.cpu_name, self.u_time, self.s_time, self.idle_time, str(self.delta_u_time), str(self.delta_s_time), str(self.delta_idle_time), str(self.cpu_utl)]
+                                                        i+=1
+                                                        c+=1
+
+                                                        print(self.cpu)
+                                                        print(self.h_Mem)
+                        time.sleep(interval)
+                        index+=1
+                        stat_file.close()                                                        
+                        
+if __name__ == "__main__":
+    reader = CPU_File("/proc/stat")
+    reader.cpu_func()
