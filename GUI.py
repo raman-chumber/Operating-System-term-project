@@ -7,6 +7,7 @@ import sys
 import time
 import heapq
 
+interval = 2
 
 u_time_curr = [0]*50
 u_time_prev = [0]*50
@@ -21,9 +22,11 @@ inter_prev = [0]*50
 ctxt_curr = [0]*50
 ctxt_prev = [0]*50
 
-interval = 2
 num_intr=0
 num_ctxt=0
+
+curr_free_mem = [0]*50
+prev_free_mem = [0]*50
 
 locallist=[]
 heap=[]
@@ -53,6 +56,8 @@ class Read:
       index=0
       self.h_Top={}
       self.h_int={}
+      self.ctxt_total={}
+      
       self.no_inter = 0
       self.delta_inter = 0
       self.cpu_utl_u = 0
@@ -60,7 +65,6 @@ class Read:
       self.delta_u_time = 0
       self.delta_s_time = 0
       self.delta_idle_time = 0
-      self.ctxt_total={}
       self.no_ctxt = 0
       self.delta_ctxt = 0
       file_stat= open("/proc/stat","r")
@@ -103,10 +107,10 @@ class Read:
                self.delta_inter = (float(inter_curr[j]) - float(inter_prev[j]))
                self.no_inter = (self.delta_inter)/interval
                inter_prev[j] = inter_curr[j]
-            self.h_int[d]=[str(self.no_inter)]
-               #num_intr = self.h_int[d]
-            j+=1
-            d+=1
+               self.h_int[d]=[str(self.no_inter)]
+               num_intr = self.h_int[d]
+               j+=1
+               d+=1
            #j = 0    
          elif line.startswith("ctxt"):
             split_ctxt = line.split()
@@ -123,7 +127,35 @@ class Read:
                k+=1
                e+=1
             #k=0
-               
+   def GetMem(self): # Getting System Statistics #
+      global mem_total, curr_free_mem, prev_free_mem
+      a=0
+      l=0
+      mem_total = 0
+      self.mem_free = 0
+      self.h_Mem={}
+      self.mem_utl = 0
+      file_mem= open("/proc/meminfo","r")
+      for line in file_mem:
+         if line.startswith('MemTotal'):
+            split_total=line.split()
+            self.mem_total=split_total[1]
+            mem_total =self.mem_total
+         if line.startswith('MemFree'):
+            split_total=line.split()
+            self.mem_free=split_total[1]
+            curr_free_mem[l] = self.mem_free
+            if prev_free_mem[l] == 0:
+               prev_free_mem[l]= self.mem_free
+            else:
+               self.mem_free = (float(curr_free_mem[l]) + float(prev_free_mem[l]))/2
+               self.mem_utl = ((float(mem_total) - float(self.mem_free))/ (float(mem_total))) * 100
+               prev_free_mem[l] = curr_free_mem[l]
+            self.h_Mem[a]=[mem_total, str(self.mem_free), str(self.mem_utl)] 
+                                           
+            l+=1
+            a+=1
+         l=0               
 
 root=Tkinter.Tk()
 
@@ -171,28 +203,35 @@ textBox4.grid(row=0,column=0,columnspan=3)
 
 
 def Display_system():
-	r.GetData()
-	textBox1.delete('1.0',END)
-	textBox1.insert(END,"File: proc/stat \n\n")
-	textBox1.insert(END,"\tName\t\t"+"User Time\t\t"+"Idle Time\t\t"+"System Time\t\t"+"U_CPU_UTL\t\t"+ "S_CPU_UTL\t\t"+"\n")
-	textBox1.insert(END,'\t'+r.h_Top[0][0]+'\t\t'+r.h_Top[0][1]+'\t\t'+r.h_Top[0][4]+'\t\t'+r.h_Top[0][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][2]))+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][3]))+'\n')
-	textBox1.insert(END,'\t'+r.h_Top[1][0]+'\t\t'+r.h_Top[1][1]+'\t\t'+r.h_Top[1][4]+"\t\t"+r.h_Top[1][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[1][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[1][3]))+'\n')
-	textBox1.insert(END,'\t'+r.h_Top[2][0]+'\t\t'+r.h_Top[2][1]+'\t\t'+r.h_Top[2][4]+"\t\t"+r.h_Top[2][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[2][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[2][3]))+'\n')
-	textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
-	textBox1.insert(END,"Number of Interrupts\t\t"+"\n")
-	textBox1.insert(END,r.h_int[0][0]+'\t'+'\n')
-	#textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.num_intr[0][0]))+'\n')
-	textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
-	textBox1.insert(END,"Number of Context Switches\t\t"+"\n")
-	textBox1.insert(END,str(num_ctxt)+'\t'+'\n')
-	#textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.ctxt_total[0][0]))+'\n')
-	r.h_Top.clear()    
-	#r.h_int.clear() 
-	#r.ctxt_total.clear()
-	root.after(3000,Display_system)
+   r.GetData()
+   r.GetMem()
+   textBox1.delete('1.0',END)
+   textBox1.insert(END,"CPU Utilization: proc/stat \n\n")
+   textBox1.insert(END,"\tName\t\t"+"User Time\t\t"+"Idle Time\t\t"+"System Time\t\t"+"U_CPU_UTL\t\t"+ "S_CPU_UTL\t\t"+"\n")
+   textBox1.insert(END,'\t'+r.h_Top[0][0]+'\t\t'+r.h_Top[0][1]+'\t\t'+r.h_Top[0][4]+'\t\t'+r.h_Top[0][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][2]))+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][3]))+'\n')
+   textBox1.insert(END,'\t'+r.h_Top[1][0]+'\t\t'+r.h_Top[1][1]+'\t\t'+r.h_Top[1][4]+"\t\t"+r.h_Top[1][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[1][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[1][3]))+'\n')
+   textBox1.insert(END,'\t'+r.h_Top[2][0]+'\t\t'+r.h_Top[2][1]+'\t\t'+r.h_Top[2][4]+"\t\t"+r.h_Top[2][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[2][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[2][3]))+'\n')
+   textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
+   textBox1.insert(END,"Number of Interrupts\t\t"+"\n")
+   textBox1.insert(END,str(num_intr)+'\t'+'\n')
+   #textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.num_intr[0][0]))+'\n')
+   textBox1.insert(END,"\n")
+   textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
+   textBox1.insert(END,"Number of Context Switches\t\t"+"\n")
+   textBox1.insert(END,str(num_ctxt)+'\t'+'\n')
+   #textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.ctxt_total[0][0]))+'\n')
+   textBox1.insert(END,"\n")
+   textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
+   textBox1.insert(END,"Memory Utilization: proc/meminfo \n\n")
+   textBox1.insert(END,"Total Memory\t\t\t"+"Free Memory\t\t"+"Mem_Util\t\t"+"\n")
+   textBox1.insert(END,str(mem_total)+'\t\t\t'+str(r.h_Mem[0][1])+"\t\t"+"{0:.2f}".format(float(r.h_Mem[0][2]))+'\n') 
+   r.h_Top.clear()  
+   r.h_Mem.clear()   
+   root.after(3000,Display_system)
 
 
 r=Read()
 
 Display_system()
 root.mainloop()
+
