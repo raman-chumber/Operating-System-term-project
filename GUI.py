@@ -28,13 +28,22 @@ num_ctxt=0
 curr_free_mem = [0]*50
 prev_free_mem = [0]*50
 
+d_read_curr = [0]*500
+d_read_prev = [0]*500
+d_write_curr = [0]*500
+d_write_prev = [0]*500
+b_read_curr = [0]*500
+b_read_prev = [0]*500
+b_write_curr = [0]*500
+b_write_prev = [0]*500
+
 locallist=[]
 heap=[]
 p_uname = re.compile(r'^(?P<name>\w+):(?P<value>\w+):(?P<measure>\w+)?')
 user_uid={} 
 uid_user={}
 
-
+#------------------------------CPU Stats-------------------------------#
 
 class Read:
    
@@ -97,6 +106,7 @@ class Read:
             i+=1
             c+=1             
         #i = 0
+#---------------------------------INTERRUPTS----------------------------#
          elif line.startswith("intr"):
             split_inter = line.split()
             self.inter = split_inter[1]
@@ -112,6 +122,8 @@ class Read:
                j+=1
                d+=1
            #j = 0    
+
+#----------------------------------CONTEXT SWITCHES----------------------#
          elif line.startswith("ctxt"):
             split_ctxt = line.split()
             self.ctxt = split_ctxt[1]
@@ -127,6 +139,9 @@ class Read:
                k+=1
                e+=1
             #k=0
+            
+#------------------------------------MEMORY STATS-------------------------------#
+
    def GetMem(self): # Getting System Statistics #
       global mem_total, curr_free_mem, prev_free_mem
       a=0
@@ -155,7 +170,57 @@ class Read:
                                            
             l+=1
             a+=1
-         l=0               
+         l=0              
+         
+#----------------------------------------DISK STATS----------------------------#
+   def GetDisk(self): # Getting System Statistics #
+      global d_read_curr, d_read_prev, d_write_curr, d_write_prev, b_read_curr, b_read_prev, b_write_curr, b_write_prev
+      g=0
+      f=0
+      self.h_Stat = {}
+      self.no_d_read = 0
+      self.no_d_write = 0
+      self.no_b_read = 0
+      self.no_b_write = 0
+      self.delta_d_read = 0
+      self.delta_d_write = 0
+      self.delta_b_read = 0
+      self.delta_b_write = 0
+      disk_file= open("/proc/diskstats","r")
+      for line in disk_file:
+         if line.find('sda')!=-1:
+            split_total = line.split()
+            self.sda = split_total[2]
+            self.d_read = split_total[4]
+            self.b_read = split_total[3]
+            self.d_write = split_total[8]
+            self.b_write = split_total[10]
+            d_read_curr[g] = self.d_read
+            b_read_curr[g] = self.b_read
+            d_write_curr[g] = self.d_write
+            b_write_curr[g] = self.b_write
+            if d_read_prev[g]==0 and d_write_prev[g] == 0 and b_read_prev[g]==0 and b_write_prev[g]==0:
+               d_read_prev[g] = self.d_read
+               d_write_prev[g] = self.d_write
+               b_read_prev[g] = self.b_read
+               b_write_prev[g] = self.b_write
+            else:
+               self.delta_d_read = float(d_read_curr[g]) - float(d_read_prev[g])
+               self.delta_d_write = float(d_write_curr[g]) - float(d_write_prev[g])
+               self.delta_b_read = float(b_read_curr[g]) - float(b_read_prev[g])
+               self.delta_b_write = float(b_write_curr[g]) - float(b_write_prev[g])
+               self.no_d_read = ((float(self.delta_d_read))/interval)*100
+               self.no_d_write= ((float(self.delta_d_write))/interval)*100
+               self.no_b_read = ((float(self.delta_b_read))/interval)*100
+               self.no_b_write= ((float(self.delta_b_write))/interval)*100
+               d_read_prev[g] = d_read_curr[g]
+               d_write_prev[g] = d_write_curr[g]
+               b_read_prev[g] = b_read_curr[g]
+               b_write_prev[g] = b_write_curr[g]
+            self.h_Stat[f]=[self.sda, str(self.no_d_read), str(self.no_d_write), str(self.no_b_read), str(self.no_b_write)]
+            g+=1
+            f+=1 
+         g=0
 
 root=Tkinter.Tk()
 
@@ -203,35 +268,47 @@ textBox4.grid(row=0,column=0,columnspan=3)
 
 
 def Display_system():
-   r.GetData()
-   r.GetMem()
-   textBox1.delete('1.0',END)
-   textBox1.insert(END,"CPU Utilization: proc/stat \n\n")
-   textBox1.insert(END,"\tName\t\t"+"User Time\t\t"+"Idle Time\t\t"+"System Time\t\t"+"U_CPU_UTL\t\t"+ "S_CPU_UTL\t\t"+"\n")
-   textBox1.insert(END,'\t'+r.h_Top[0][0]+'\t\t'+r.h_Top[0][1]+'\t\t'+r.h_Top[0][4]+'\t\t'+r.h_Top[0][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][2]))+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][3]))+'\n')
-   textBox1.insert(END,'\t'+r.h_Top[1][0]+'\t\t'+r.h_Top[1][1]+'\t\t'+r.h_Top[1][4]+"\t\t"+r.h_Top[1][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[1][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[1][3]))+'\n')
-   textBox1.insert(END,'\t'+r.h_Top[2][0]+'\t\t'+r.h_Top[2][1]+'\t\t'+r.h_Top[2][4]+"\t\t"+r.h_Top[2][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[2][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[2][3]))+'\n')
-   textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
-   textBox1.insert(END,"Number of Interrupts\t\t"+"\n")
-   textBox1.insert(END,str(num_intr)+'\t'+'\n')
-   #textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.num_intr[0][0]))+'\n')
-   textBox1.insert(END,"\n")
-   textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
-   textBox1.insert(END,"Number of Context Switches\t\t"+"\n")
-   textBox1.insert(END,str(num_ctxt)+'\t'+'\n')
-   #textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.ctxt_total[0][0]))+'\n')
-   textBox1.insert(END,"\n")
-   textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
-   textBox1.insert(END,"Memory Utilization: proc/meminfo \n\n")
-   textBox1.insert(END,"Total Memory\t\t\t"+"Free Memory\t\t"+"Mem_Util\t\t"+"\n")
-   textBox1.insert(END,str(mem_total)+'\t\t\t'+str(r.h_Mem[0][1])+"\t\t"+"{0:.2f}".format(float(r.h_Mem[0][2]))+'\n') 
-   r.h_Top.clear()  
-   r.h_Mem.clear()   
-   root.after(3000,Display_system)
+	r.GetData()
+	r.GetMem()
+	textBox1.delete('1.0',END)
+	textBox1.insert(END,"CPU Utilization: proc/stat \n\n")
+	textBox1.insert(END,"\tName\t\t"+"User Time\t\t"+"Idle Time\t\t"+"System Time\t\t"+"U_CPU_UTL\t\t"+ "S_CPU_UTL\t\t"+"\n")
+	textBox1.insert(END,'\t'+r.h_Top[0][0]+'\t\t'+r.h_Top[0][1]+'\t\t'+r.h_Top[0][4]+'\t\t'+r.h_Top[0][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][2]))+'\t\t'+"{0:.2f}".format(float(r.h_Top[0][3]))+'\n')
+	textBox1.insert(END,'\t'+r.h_Top[1][0]+'\t\t'+r.h_Top[1][1]+'\t\t'+r.h_Top[1][4]+"\t\t"+r.h_Top[1][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[1][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[1][3]))+'\n')
+	textBox1.insert(END,'\t'+r.h_Top[2][0]+'\t\t'+r.h_Top[2][1]+'\t\t'+r.h_Top[2][4]+"\t\t"+r.h_Top[2][5]+'\t\t'+"{0:.2f}".format(float(r.h_Top[2][2]))+"\t\t"+"{0:.2f}".format(float(r.h_Top[2][3]))+'\n')
+	textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
+	textBox1.insert(END,"Number of Interrupts\t\t"+"\n")
+	textBox1.insert(END,str(num_intr)+'\t'+'\n')
+	#textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.num_intr[0][0]))+'\n')
+	textBox1.insert(END,"\n")
+	textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
+	textBox1.insert(END,"Number of Context Switches\t\t"+"\n")
+	textBox1.insert(END,str(num_ctxt)+'\t'+'\n')
+	#textBox1.insert(END,'\t'+"{0:.2f}".format(float(r.ctxt_total[0][0]))+'\n')
+	textBox1.insert(END,"\n")
+	textBox1.insert(END,"----------------------------------------------------------------------------------------------------------\n\n")
+	textBox1.insert(END,"Memory Utilization: proc/meminfo \n\n")
+	textBox1.insert(END,"Total Memory\t\t\t"+"Free Memory\t\t"+"Mem_Util\t\t"+"\n")
+	textBox1.insert(END,str(mem_total)+'\t\t\t'+str(r.h_Mem[0][1])+"\t\t"+"{0:.2f}".format(float(r.h_Mem[0][2]))+'\n') 
+	r.h_Top.clear()  
+	r.h_Mem.clear()   
+	root.after(3000,Display_system)
 
-
+def Display_disk():
+	r.GetDisk()
+	textBox4.delete('1.0',END)
+	textBox4.insert(END,"Disk Stats: proc/diskstats \n\n")
+	textBox4.insert(END,"Name\t\t"+"No of Disk Reads\t\t\t"+"No of Disk Writes\t\t\t"+"No of Block Reads\t\t\t"+"No of Block Writes\t\t\t"+"\n")
+	textBox4.insert(END,r.h_Stat[0][0]+'\t\t'+"{0:.2f}".format(float(r.h_Stat[0][1]))+'\t\t\t'+"{0:.2f}".format(float(r.h_Stat[0][2]))+'\t\t\t'+"{0:.2f}".format(float(r.h_Stat[0][3]))+'\t\t\t'+"{0:.2f}".format(float(r.h_Stat[0][4]))+'\n')
+	textBox4.insert(END,r.h_Stat[1][0]+'\t\t'+"{0:.2f}".format(float(r.h_Stat[1][1]))+'\t\t\t'+"{0:.2f}".format(float(r.h_Stat[1][2]))+'\t\t\t'+"{0:.2f}".format(float(r.h_Stat[1][3]))+'\t\t\t'+"{0:.2f}".format(float(r.h_Stat[1][4]))+'\n')
+	r.h_Stat.clear()     
+	root.after(3000,Display_disk)
+	
 r=Read()
 
 Display_system()
+Display_disk()
 root.mainloop()
+
+
 
